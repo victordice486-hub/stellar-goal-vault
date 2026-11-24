@@ -89,6 +89,7 @@ jobs:
             echo "Waiting for backend... (attempt $i/60)"
             sleep 2
           done
+          curl -f http://localhost:3001/api/health > /dev/null 2>&1 || { echo "Backend never became healthy"; docker-compose logs backend; exit 1; }
           
           # Wait for frontend to be healthy
           for i in {1..60}; do

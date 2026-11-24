@@ -36,7 +36,7 @@ jobs:
       url: https://stellar.expert/explorer/testnet
     outputs:
       contract_id: ${{ steps.deploy.outputs.contract_id }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,7 +78,7 @@ jobs:
             echo "Error: TESTNET_SECRET_KEY secret not configured"
             exit 1
           fi
-          
+
           echo "Deploying to testnet..."
           DEPLOY_OUTPUT=$(soroban contract deploy \
             --wasm target/wasm32-unknown-unknown/release/stellar_goal_vault.wasm \
@@ -87,23 +87,23 @@ jobs:
             --network-passphrase "$NETWORK_PASSPHRASE" \
             --rpc-url "$RPC_URL" \
             2>&1)
-          
+
           DEPLOY_EXIT_CODE=$?
           if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
             echo "Deployment failed: $DEPLOY_OUTPUT"
             exit 1
           fi
-          
+
           CONTRACT_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[A-Z0-9]{56}' | head -n 1)
           if [ -z "$CONTRACT_ID" ]; then
             CONTRACT_ID=$(echo "$DEPLOY_OUTPUT" | tr -d '[:space:]')
           fi
-          
+
           if [ ${#CONTRACT_ID} -ne 56 ]; then
             echo "Invalid contract ID format"
             exit 1
           fi
-          
+
           echo "contract_id=$CONTRACT_ID" >> $GITHUB_OUTPUT
           echo "Contract ID: $CONTRACT_ID"
           echo "TESTNET_CONTRACT_ID=$CONTRACT_ID" >> $GITHUB_ENV
@@ -114,7 +114,7 @@ jobs:
           script: |
             const fs = require('fs');
             const contractId = '${{ steps.deploy.outputs.contract_id }}';
-            
+
             // Update .env.example with new contract ID
             try {
               let envExample = fs.readFileSync('.env.example', 'utf8');
@@ -157,7 +157,7 @@ jobs:
       url: https://stellar.expert/explorer/testnet
     outputs:
       contract_id: ${{ steps.deploy.outputs.contract_id }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -199,7 +199,7 @@ jobs:
             echo "Error: STAGING_SECRET_KEY secret not configured"
             exit 1
           fi
-          
+
           echo "Deploying to staging (testnet)..."
           DEPLOY_OUTPUT=$(soroban contract deploy \
             --wasm target/wasm32-unknown-unknown/release/stellar_goal_vault.wasm \
@@ -208,23 +208,23 @@ jobs:
             --network-passphrase "$NETWORK_PASSPHRASE" \
             --rpc-url "$RPC_URL" \
             2>&1)
-          
+
           DEPLOY_EXIT_CODE=$?
           if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
             echo "Deployment failed: $DEPLOY_OUTPUT"
             exit 1
           fi
-          
+
           CONTRACT_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[A-Z0-9]{56}' | head -n 1)
           if [ -z "$CONTRACT_ID" ]; then
             CONTRACT_ID=$(echo "$DEPLOY_OUTPUT" | tr -d '[:space:]')
           fi
-          
+
           if [ ${#CONTRACT_ID} -ne 56 ]; then
             echo "Invalid contract ID format"
             exit 1
           fi
-          
+
           echo "contract_id=$CONTRACT_ID" >> $GITHUB_OUTPUT
           echo "Contract ID: $CONTRACT_ID"
           echo "STAGING_CONTRACT_ID=$CONTRACT_ID" >> $GITHUB_ENV
@@ -261,7 +261,7 @@ jobs:
       url: https://stellar.expert/explorer/public
     outputs:
       contract_id: ${{ steps.deploy.outputs.contract_id }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -303,11 +303,11 @@ jobs:
             echo "Error: MAINNET_SECRET_KEY secret not configured"
             exit 1
           fi
-          
+
           echo "⚠️  DEPLOYING TO MAINNET - THIS IS IRREVERSIBLE ⚠️"
           echo "Contract ID: $CONTRACT_ID"
           sleep 10
-          
+
           echo "Deploying to mainnet..."
           DEPLOY_OUTPUT=$(soroban contract deploy \
             --wasm target/wasm32-unknown-unknown/release/stellar_goal_vault.wasm \
@@ -316,23 +316,23 @@ jobs:
             --network-passphrase "$NETWORK_PASSPHRASE" \
             --rpc-url "$RPC_URL" \
             2>&1)
-          
+
           DEPLOY_EXIT_CODE=$?
           if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
             echo "Deployment failed: $DEPLOY_OUTPUT"
             exit 1
           fi
-          
+
           CONTRACT_ID=$(echo "$DEPLOY_OUTPUT" | grep -oE '[A-Z0-9]{56}' | head -n 1)
           if [ -z "$CONTRACT_ID" ]; then
             CONTRACT_ID=$(echo "$DEPLOY_OUTPUT" | tr -d '[:space:]')
           fi
-          
+
           if [ ${#CONTRACT_ID} -ne 56 ]; then
             echo "Invalid contract ID format"
             exit 1
           fi
-          
+
           echo "contract_id=$CONTRACT_ID" >> $GITHUB_OUTPUT
           echo "Contract ID: $CONTRACT_ID"
           echo "MAINNET_CONTRACT_ID=$CONTRACT_ID" >> $GITHUB_ENV
@@ -343,54 +343,4 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const contractId = '${{ steps.deploy.outputs.contract_id }}';
-            
-            // Update .env.example with new contract ID
-            try {
-              let envExample = fs.readFileSync('.env.example', 'utf8');
-              const updated = envExample.replace(
-                /MAINNET_CONTRACT_ID=.*/,
-                `MAINNET_CONTRACT_ID=${contractId}`
-              );
-              fs.writeFileSync('.env.example', updated);
-            } catch (e) {
-              console.log('Could not update .env.example:', e.message);
-            }
-
-      - name: Commit and push contract ID update
-        if: steps.deploy.outputs.contract_id != ''
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .env.example
-          git diff --staged --quiet || git commit -m "chore: update mainnet contract ID [skip ci]"
-          git push
-
-      - name: Create GitHub release
-        if: steps.deploy.outputs.contract_id != ''
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Mainnet Contract Deployment v${{ github.run_number }}
-          body: |
-            ## Mainnet Contract Deployment
-            
-            **Contract ID:** `${{ steps.deploy.outputs.contract_id }}`
-            
-            **Explorer:** [View on Stellar Expert](https://stellar.expert/explorer/public/contract/${{ steps.deploy.outputs.contract_id }})
-            
-            This contract has been deployed to the Stellar mainnet and is ready for production use.
-          draft: false
-          prerelease: false
-
-      - name: Create deployment summary
-        run: |
-          echo "### 🎉 Mainnet Deployment Successful" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Contract ID:** \`${{ steps.deploy.outputs.contract_id }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Explorer:** [View on Stellar Expert](https://stellar.expert/explorer/public/contract/${{ steps.deploy.outputs.contract_id }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **IMPORTANT:** This contract is now live on mainnet. All transactions are irreversible." >> $GITHUB_STEP_SUMMARY
+            const contractId = 
